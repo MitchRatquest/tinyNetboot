@@ -1,0 +1,44 @@
+#!ipxe
+
+# Arch Linux Operating System
+# http://www.archlinux.org
+
+goto ${menu} ||
+
+:archlinux
+set os Arch Linux
+clear arch_version
+menu ${os} - ${arch} - Image Sig Checks: [${img_sigs_enabled}]
+menu Arch Linux
+item --gap Latest Releases
+item 2017.09.01 2017.09.01
+item 2017.08.01 2017.08.01
+item 2017.07.01 2017.07.01
+choose arch_version || goto archlinux_exit
+goto boot
+
+:boot
+imgfree
+iseq ${arch} i386 && set bootarch i686 || set bootarch x86_64
+set dir archlinux/iso/${arch_version}/arch/boot
+set params initrd=archiso.img archiso_http_srv=http://${mirror}/archlinux/iso/${arch_version}/ archisobasedir=arch verify=y ip=dhcp net.ifnames=0 ${console}
+kernel http://${mirror}/${dir}/${bootarch}/vmlinuz ${params} initrd=archiso.img
+initrd http://${mirror}/${dir}/${bootarch}/archiso.img
+echo
+echo MD5sums:
+md5sum vmlinuz archiso.img
+iseq ${img_sigs_enabled} true && goto verify_sigs || goto skip_sigs
+:verify_sigs
+echo
+echo Checking signatures...
+imgverify vmlinuz ${sigs}${dir}/${bootarch}/vmlinuz.sig || goto error
+imgverify archiso.img ${sigs}${dir}/${bootarch}/archiso.img.sig || goto error
+echo Signatures verified!
+echo
+:skip_sigs
+boot
+goto archlinux_exit
+
+:archlinux_exit
+clear menu
+exit 0

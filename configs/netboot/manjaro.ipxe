@@ -1,0 +1,39 @@
+#!ipxe
+
+# Manjaro Linux Operating System
+# https://manjaro.org
+
+goto ${menu}
+
+:manjaro
+set os Manjaro Linux
+menu ${os} Installers
+item --gap Official Releases
+item 17.0.4 ${space} ${os} 17.0.4
+choose manjaro_version || goto manjaro_exit
+
+:manjaro_flavor
+menu ${os} ${manjaro_version} Installers
+item --gap Flavors
+item architect ${manjaro_version} Architect
+item gnome ${manjaro_version} Gnome
+item kde ${manjaro_version} KDE
+item xfce ${manjaro_version} XFCE
+choose --default ${type} flavor || goto manjaro
+echo ${cls}
+goto mirror_cfg
+
+:mirror_cfg
+set flavor_root ${flavor}
+set manjaro_initrd http://sourceforge.net/projects/manjarolinux/files/release/${manjaro_version}/${flavor_root}/manjaro-${flavor}-${manjaro_version}-stable-x86_64.iso/download
+goto manjaro_boot
+
+:manjaro_boot
+kernel ${memdisk} iso raw
+initrd ${manjaro_initrd}
+boot
+goto manjaro_exit
+
+:manjaro_exit
+clear menu
+exit 0

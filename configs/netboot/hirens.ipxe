@@ -1,0 +1,25 @@
+#!ipxe
+
+# Tiny Core Linux
+# http://tinycorelinux.net/downloads.html
+
+set tinycore_mirror 192.168.100.1
+
+:tinycore_menu
+set dir hirens
+menu Hirens Boot CD
+item Hirens.BootCD.14.0 ${space} Hirens.BootCD.14.0 [ISO]
+item TinyCore ${space} TinyCore [ISO]
+item CorePlus ${space} CorePlus [ISO]
+choose version || goto tinycore_exit
+
+echo ${cls}
+
+kernel ${memdisk} iso raw ${params}
+initrd http://${tinycore_mirror}/${dir}/${version}.iso
+boot
+#Hirens.BootCD.14.0.
+
+:tinycore_exit
+clear menu
+exit 0

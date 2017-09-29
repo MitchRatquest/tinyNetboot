@@ -1,0 +1,2 @@
+#!/bin/sh
+cd /var/www/data && python -m SimpleHTTPServer 80 2&>/tmp/pythonlog

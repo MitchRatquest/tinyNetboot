@@ -1,0 +1,76 @@
+To set up a menu configuration, see the documentation at: https://github.com/antonym/netboot.xyz
+
+For a quick example, see below.
+
+The simplest way to test this setup is with tinycore linux, as its entire image is about 10MB. In the original menu entry, it looks like this:
+
+#!ipxe
+
+# Tiny Core Linux
+# http://tinycorelinux.net/downloads.html
+
+set tinycore_mirror tinycorelinux.net
+
+:tinycore_menu
+set dir 7.x/x86/release
+menu Tiny Core Linux 7.x
+item Core ${space} Core [ISO]
+item TinyCore ${space} TinyCore [ISO]
+item CorePlus ${space} CorePlus [ISO]
+choose version || goto tinycore_exit
+
+echo ${cls}
+
+kernel ${memdisk} iso raw ${params}
+initrd http://${tinycore_mirror}/${dir}/${version}-current.iso
+boot
+
+:tinycore_exit
+clear menu
+exit 0
+
+---------------------------------------------
+In the entry I use, it looks like this: 
+
+#!ipxe
+
+# Tiny Core Linux
+# http://tinycorelinux.net/downloads.html
+
+set tinycore_mirror 192.168.100.1
+
+:tinycore_menu
+set dir tinycore
+menu Tiny Core Linux 7.x
+item Core ${space} Core [ISO]
+item TinyCore ${space} TinyCore [ISO]
+item CorePlus ${space} CorePlus [ISO]
+choose version || goto tinycore_exit
+
+echo ${cls}
+
+kernel ${memdisk} iso raw ${params}
+initrd http://${tinycore_mirror}/${dir}/${version}-7.2.iso
+boot
+
+:tinycore_exit
+clear menu
+exit 0
+
+--------------------------------
+And finally, the relevant tree diagram of the var/www/data folder:
+
+/var/www/data/
+├── boot
+│   ├── memdisk
+│   └── wimboot
+├── boot.cfg
+├── menu.ipxe
+├── tinycore
+│   ├── Core-7.2.iso
+│   ├── CorePlus-7.2.iso
+│   └── TinyCore-7.2.iso
+└─── tinycore.ipxe
+
+Here you can see that I've changed the mirror location, the directory the ISOs are stored in, and matched the names of the ISOs. 
+Tinycore is the simplest test case. For other distributions, you need to point it to the memdisk, and for windows you need to point to wimboot. 

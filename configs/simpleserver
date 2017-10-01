@@ -1,2 +1,4 @@
 #!/bin/sh
+ifup eth0
+ifup lo
 cd /var/www/data && python -m SimpleHTTPServer 80 2&>/tmp/pythonlog

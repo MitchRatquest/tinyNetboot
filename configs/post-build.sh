@@ -19,6 +19,9 @@ cp $BOARD_DIR/S90pythonhttp $TARGET_DIR/etc/init.d
 cp -r $BOARD_DIR/netboot/* $TARGET_DIR/var/www/data
 cp $BOARD_DIR/netboot/netboot.xyz.kpxe $TARGET_DIR/var/lib/tftpboot
 
+rm $TARGET_DIR/etc/init.d/S30rpcbind
+rm $TARGET_DIR/etc/init.d/S50nfs
+rm $TARGET_DIR/etc/init.d/autofs
 
 # U-Boot script
 "${MKIMAGE}" -C none -A arm -T script -d "${BOOT_CMD}" "${BOOT_CMD_H}"

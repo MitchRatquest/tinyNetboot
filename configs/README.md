@@ -24,9 +24,6 @@ In this instance it removes files we don't need, and adds some new files in plac
 ## post-image.sh
 This runs at nearly the end. Don't mess with this script unless you know what you're doing. 
 
-## sun8i-h3-nanopi-neo.dtb/s
-These are device tree files. the dts is not yet compiled, while the dtb is. These are historical, as these get built using u-boot with the patches applied. 
-
 ## dnsmasq.conf
 Sets up the DHCP and TFTP server. Gets copied to rootfs during post-build.sh
 

@@ -18,6 +18,8 @@ cp $BOARD_DIR/dnsmasq.conf $TARGET_DIR/etc
 cp $BOARD_DIR/S90pythonhttp $TARGET_DIR/etc/init.d
 cp -r $BOARD_DIR/netboot/* $TARGET_DIR/var/www/data
 cp $BOARD_DIR/netboot/netboot.xyz.kpxe $TARGET_DIR/var/lib/tftpboot
+cp $BOARD_DIR/S88usbotg $TARGET_DIR/etc/init.d
+
 
 rm $TARGET_DIR/etc/init.d/S30rpcbind
 rm $TARGET_DIR/etc/init.d/S50nfs

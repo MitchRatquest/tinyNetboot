@@ -1,0 +1,22 @@
+#!/bin/sh
+
+case "$1" in
+	start)
+		echo mmc0 > /sys/class/leds/nanopi:blue:status/trigger
+		modprobe g_ether
+		ifup usb0
+		ifup lo
+		;;
+	stop)
+		echo none > /sys/class/leds/nanopi:blue:status/trigger
+		ifdown usb0
+		modprobe -r g_ether
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart|reload}" >&2
+   		exit 1
+    		;;
+esac
+
+exit 0
+

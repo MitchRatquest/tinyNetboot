@@ -1,0 +1,300 @@
+--- buildroot-2017.05-rc2/package/Config.in	2017-05-17 03:27:16.000000000 -0500
++++ buildroot-2017.05-rc2.orig/package/Config.in	2018-01-01 17:06:53.709337487 -0600
+@@ -1507,6 +1507,7 @@
+ 	source "package/aiccu/Config.in"
+ 	source "package/aircrack-ng/Config.in"
+ 	source "package/apache/Config.in"
++	source "package/apt-cacher-ng/Config.in"
+ 	source "package/argus/Config.in"
+ 	source "package/arp-scan/Config.in"
+ 	source "package/arptables/Config.in"
+
+--- buildroot-2017.05-rc2/package/apt-cacher-ng/Config.in	1969-12-31 18:00:00.000000000 -0600
++++ buildroot-2017.05-rc2.orig/package/apt-cacher-ng/Config.in	2018-01-01 17:05:08.336835557 -0600
+@@ -0,0 +1,37 @@
++config BR2_PACKAGE_APT_CACHER_NG
++   bool "apt-cacher-ng"
++
++   depends on BR2_INSTALL_LIBSTDCPP
++
++   help
++      A caching proxy.
++
++      Specialized for package files from Linux distributors, primarily
++      for Debian (and Debian based) distributions but not limited to those.
++
++      Optional dependencies:
++
++       o zlib
++       o xz
++       o bzip2
++       o openssl
++
++      https://www.unix-ag.uni-kl.de/~bloch/acng/
++
++if BR2_PACKAGE_APT_CACHER_NG
++
++comment "acngfs needs libfuse, which needs a toolchain w/ threads, dynamic library"
++   depends on ( \
++      BR2_STATIC_LIBS || !BR2_TOOLCHAIN_HAS_THREADS || \
++      !BR2_USE_MMU )
++
++config BR2_PACKAGE_APT_CACHER_NG_ACNGFS
++   bool "acngfs"
++
++   select BR2_PACKAGE_LIBFUSE
++   ## propagated dependencies:
++   depends on !BR2_STATIC_LIBS
++   depends on BR2_TOOLCHAIN_HAS_THREADS
++   depends on BR2_USE_MMU # fork()
++
++endif # BR2_PACKAGE_APT_CACHER_NG
+
+--- buildroot-2017.05-rc2/package/apt-cacher-ng/apt-cacher-ng.sysv	1969-12-31 18:00:00.000000000 -0600
++++ buildroot-2017.05-rc2.orig/package/apt-cacher-ng/apt-cacher-ng.sysv	2018-01-01 17:05:18.500887309 -0600
+@@ -0,0 +1,99 @@
++#!/bin/sh
++# Copyright 1999-2015 Gentoo Foundation
++# Distributed under the terms of the GNU General Public License v2
++#
++# Start apt-cacher-ng.
++#
++# Based on Gentoo's init script (OpenRC).
++#
++RC_SVCNAME=apt-cacher-ng
++
++DAEMON="/usr/sbin/${RC_SVCNAME}"
++RUNDIR="/var/run/${RC_SVCNAME}"
++CACHEDIR="/var/cache/${RC_SVCNAME}"
++PIDFILE="${RUNDIR}/${RC_SVCNAME}.pid"
++SOCKETPATH="${RUNDIR}/${RC_SVCNAME}.socket"
++DAEMON_OPTS="${DAEMON_OPTS-} \
++pidfile=${PIDFILE} SocketPath=${SOCKETPATH} foreground=0"
++
++
++start_pre() {
++   mkdir -p -m 0755 -- "${RUNDIR}" && \
++   chown -h -- "${RC_SVCNAME}:${RC_SVCNAME}" "${RUNDIR}" && \
++   \
++   mkdir -p -m 0755 -- "${CACHEDIR}" && \
++   chown -h -- "${RC_SVCNAME}:${RC_SVCNAME}" "${CACHEDIR}"
++}
++
++start() {
++   printf '%s\n' "Starting ${RC_SVCNAME}"
++
++   if ! start_pre; then
++      printf '%s\n' "Failed to create essential directories."
++      rc=5
++
++   elif start-stop-daemon -S -q \
++      -x "${DAEMON}" \
++      -c "${RC_SVCNAME}:${RC_SVCNAME}" \
++      -p "${PIDFILE}" \
++      -- ${DAEMON_OPTS}
++   then
++      rc=0
++
++   else
++      rc=${?}
++      printf '%s\n' "Failed to start ${RC_SVCNAME}" 1>&2
++   fi
++
++   return ${rc}
++}
++
++stop() {
++   printf '%s\n' "Stopping ${RC_SVCNAME}"
++
++   if start-stop-daemon -K -q -x "${DAEMON}" -p "${PIDFILE}"; then
++      rc=0
++   else
++      rc=${?}
++      printf '%s\n' "Failed to stop ${RC_SVCNAME}" 1>&2
++   fi
++
++   return ${rc}
++}
++
++get_status() {
++   start-stop-daemon -K -q -t -x "${DAEMON}" -p "${PIDFILE}"
++}
++
++status() {
++   if get_status; then
++      printf '%s\n' "running"
++      return 0
++   else
++      printf '%s\n' "stopped"
++      return 1
++   fi
++}
++
++case "${1}" in
++   stop|status)
++      ${1}
++   ;;
++   start)
++      [ -x "${DAEMON}" ] || exit 5
++      ${1}
++   ;;
++   restart|condrestart)
++      [ -x "${DAEMON}" ] || exit 5
++      if get_status; then
++         stop
++      elif [ "${1}" = "condrestart" ]; then
++         exit 0
++      fi
++      start
++   ;;
++   *)
++      printf '%s\n' "Usage: ${0} start|stop|restart|status|condrestart" 1>&2
++      exit 64
++   ;;
++esac
+
+--- buildroot-2017.05-rc2/package/apt-cacher-ng/apt-cacher-ng.mk	1969-12-31 18:00:00.000000000 -0600
++++ buildroot-2017.05-rc2.orig/package/apt-cacher-ng/apt-cacher-ng.mk	2018-01-01 17:09:45.338017043 -0600
+@@ -0,0 +1,118 @@
++################################################################################
++#
++# apt-cacher-ng
++#
++################################################################################
++
++APT_CACHER_NG_VERSION = 0.8.0
++APT_CACHER_NG_SOURCE = apt-cacher-ng_$(APT_CACHER_NG_VERSION).orig.tar.xz
++APT_CACHER_NG_SITE = http://ftp.us.debian.org/debian/pool/main/a/apt-cacher-ng
++APT_CACHER_NG_LICENSE = BSD-4 ZLIB public-domain
++APT_CACHER_NG_LICENSE_FILES = COPYING
++
++APT_CACHER_NG_MAKE_OPTS += apt-cacher-ng
++APT_CACHER_NG_MAKE_OPTS += DEBUG=$(BR2_ENABLE_DEBUG)
++
++APT_CACHER_NG_CONF_OPTS += -DHAVE_LIBWRAP=no
++APT_CACHER_NG_CONF_OPTS += -DPTHREAD_COND_TIMEDWAIT_TIME_RANGE_OK=yes
++
++
++ifeq ($(BR2_PACKAGE_APT_CACHER_NG_ACNGFS),y)
++APT_CACHER_NG_MAKE_OPTS += acngfs
++APT_CACHER_NG_DEPENDENCIES += libfuse
++APT_CACHER_NG_CONF_OPTS += -DHAVE_FUSE_25=yes
++else
++APT_CACHER_NG_CONF_OPTS += -DHAVE_FUSE_25=no
++endif
++
++ifeq ($(BR2_PACKAGE_ZLIB),y)
++APT_CACHER_NG_DEPENDENCIES += zlib
++endif
++
++ifeq ($(BR2_PACKAGE_XZ),y)
++APT_CACHER_NG_DEPENDENCIES += xz
++endif
++
++ifeq ($(BR2_PACKAGE_BZIP2),y)
++APT_CACHER_NG_DEPENDENCIES += bzip2
++endif
++
++ifeq ($(BR2_PACKAGE_OPENSSL),y)
++APT_CACHER_NG_DEPENDENCIES += openssl
++endif
++
++define APT_CACHER_NG_INSTALL_TARGET_CMDS
++	$(INSTALL) -D -m 0755 -- \
++		$(APT_CACHER_NG_BUILDDIR)/apt-cacher-ng \
++		$(TARGET_DIR)/usr/sbin/apt-cacher-ng
++
++	$(INSTALL) -d -m 0755 -- $(TARGET_DIR)/etc/apt-cacher-ng
++
++	$(INSTALL) -m 0644 -- $(@D)/conf/acng.conf \
++		$(TARGET_DIR)/etc/apt-cacher-ng/apt-cacher-ng.conf
++
++	find $(@D)/conf/ -type f -not -name 'acng.conf' \
++		-exec $(INSTALL) -m 0644 -t '$(TARGET_DIR)/etc/apt-cacher-ng' '{}' +
++endef
++
++ifeq ($(BR2_PACKAGE_AVAHI_DAEMON),y)
++define APT_CACHER_NG_DO_INSTALL_AVAHI
++	$(INSTALL) -d -m 0644 \
++		$(@D)/contrib/apt-cacher-ng.service \
++		$(TARGET_DIR)/etc/avahi/services/apt-cacher-ng.service
++endef
++APT_CACHER_NG_POST_INSTALL_TARGET_HOOKS += APT_CACHER_NG_DO_INSTALL_AVAHI
++endif
++
++define APT_CACHER_NG_INSTALL_INIT_SYSTEMD
++	$(INSTALL) -d -m 0644 -- \
++		$(@D)/systemd/apt-cacher-ng.conf \
++		$(TARGET_DIR)/usr/lib/tmpfiles.d/apt-cacher-ng.conf
++
++	$(INSTALL) -d -m 0644 -- \
++		$(@D)/systemd/apt-cacher-ng.service \
++		$(TARGET_DIR)/lib/systemd/system/apt-cacher-ng.service
++
++	$(INSTALL) -D -m 0755 \
++		$(TARGET_DIR)/etc/systemd/system/multi-user.target.wants
++
++	ln -f -s -- \
++		/lib/systemd/system/apt-cacher-ng.service \
++		$(TARGET_DIR)/etc/systemd/system/multi-user.target.wants/apt-cacher-ng.service
++endef
++
++define APT_CACHER_NG_INSTALL_INIT_SYSV
++	$(INSTALL) -d -m 0755 \
++		$(BR2_EXTERNAL)/package/apt-cacher-ng/apt-cacher-ng.sysv \
++		$(TARGET_DIR)/etc/init.d/S70apt-cacher-ng
++endef
++
++ifeq ($(BR2_PACKAGE_APT_CACHER_NG_ACNGFS),y)
++define APT_CACHER_NG_DO_INSTALL_ACNGFS
++	$(INSTALL) -d -m 0755 -- \
++		$(APT_CACHER_NG_BUILDDIR)/acngfs $(TARGET_DIR)/usr/bin/acngfs
++endef
++APT_CACHER_NG_POST_INSTALL_TARGET_HOOKS += APT_CACHER_NG_DO_INSTALL_ACNGFS
++endif
++
++define APT_CACHER_NG_USERS
++	apt-cacher-ng -1 apt-cacher-ng -1 * - - - apt-cacher-ng
++endef
++
++$(eval $(cmake-package))
++
++## insists on building in build/
++APT_CACHER_NG_BUILDDIR = $(APT_CACHER_NG_SRCDIR)/build
++
++## need to create build/
++define APT_CACHER_NG_DO_MKDIR_BUILD
++	mkdir -p -- $(APT_CACHER_NG_BUILDDIR)
++	touch -- $(APT_CACHER_NG_BUILDDIR)/.dir-stamp
++endef
++APT_CACHER_NG_POST_EXTRACT_HOOKS += APT_CACHER_NG_DO_MKDIR_BUILD
++
++## apt-cacher-ng's Makefile logic wants this file
++define APT_CACHER_NG_DO_CREATE_CONFIG_FLAGFILE
++	touch -- $(APT_CACHER_NG_BUILDDIR)/.config-stamp
++endef
++APT_CACHER_NG_POST_CONFIGURE_HOOKS += APT_CACHER_NG_DO_CREATE_CONFIG_FLAGFILE
+
+--- buildroot-2017.05-rc2/package/apt-cacher-ng/0001-apt-cacher-ng-fix-openssl-include.patch	1969-12-31 18:00:00.000000000 -0600
++++ buildroot-2017.05-rc2.orig/package/apt-cacher-ng/0001-apt-cacher-ng-fix-openssl-include.patch	2018-01-01 17:04:59.988792479 -0600
+@@ -0,0 +1,19 @@
++diff -Nur3 a/source/apt-cacher.cc b/source/apt-cacher.cc
++--- a/source/apt-cacher.cc	2014-10-20 22:44:16.000000000 +0200
+++++ b/source/apt-cacher.cc	2015-02-21 20:07:23.012515824 +0100
++@@ -1,7 +1,6 @@
++ #include <acbuf.h>
++ #include <aclogger.h>
++ #include <fcntl.h>
++-#include <openssl/evp.h>
++ #include <stddef.h>
++ #include <sys/stat.h>
++ #include <sys/types.h>
++@@ -37,6 +36,7 @@
++ #include "openssl/bio.h"
++ #include "openssl/ssl.h"
++ #include "openssl/err.h"
+++#include <openssl/evp.h>
++ #include <openssl/rand.h>
++ #include <openssl/sha.h>
++ #include <openssl/crypto.h>
+
